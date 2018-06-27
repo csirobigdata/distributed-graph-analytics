@@ -72,6 +72,7 @@ task distJars(dependsOn: 'distConf', type: Copy) {
     include "dga-core*.jar"
     include "dga-graphx*.jar"
     include "config*.jar"
+    include "*core*.jar"
     include "*graphx*.jar"
     include "scopt*.jar"
     into "${buildDir}/dist/lib"
