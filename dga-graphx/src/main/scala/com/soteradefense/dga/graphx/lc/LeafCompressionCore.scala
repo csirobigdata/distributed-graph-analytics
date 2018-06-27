@@ -17,7 +17,7 @@
  */
 package com.soteradefense.dga.graphx.lc
 
-import org.apache.spark.Logging
+import com.soteradefense.dga.graphx.utils.Logging
 import org.apache.spark.graphx.{EdgeTriplet, Graph, VertexId}
 
 import scala.reflect.ClassTag

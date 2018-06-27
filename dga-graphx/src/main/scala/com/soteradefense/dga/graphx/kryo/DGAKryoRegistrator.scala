@@ -24,14 +24,14 @@ import com.soteradefense.dga.graphx.lc.HDFSLCRunner
 import com.soteradefense.dga.graphx.louvain.{HDFSLouvainRunner, LouvainData}
 import com.soteradefense.dga.graphx.pr.HDFSPRRunner
 import com.soteradefense.dga.graphx.wcc.HDFSWCCRunner
-import org.apache.spark.graphx.GraphKryoRegistrator
+import org.apache.spark.serializer.KryoRegistrator
 
 /**
  * Kryo Registrator for DGA's classes.  Extends from the GraphX Registrator.
  */
-class DGAKryoRegistrator extends GraphKryoRegistrator {
+class DGAKryoRegistrator extends KryoRegistrator {
   override def registerClasses(kryo: Kryo) {
-    super.registerClasses(kryo)
+    //super.registerClasses(kryo)
     kryo.register(classOf[EdgeInputFormat])
 
     //WCC

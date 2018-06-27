@@ -17,7 +17,7 @@
  */
 package com.soteradefense.dga.graphx.wcc
 
-import org.apache.spark.Logging
+import com.soteradefense.dga.graphx.utils.Logging
 import org.apache.spark.graphx._
 
 import scala.reflect.ClassTag
@@ -30,8 +30,8 @@ class WeaklyConnectionComponentsCore extends Logging with Serializable {
 
   def runWeaklyConnectedComponents[VD: ClassTag](graph: Graph[VD, Long]): (Graph[VertexId, Long]) = {
     logInfo("Setting each vertex to the maximum neighbor value.")
-    val initialComponentCalculation: VertexRDD[VertexId] = graph.mapReduceTriplets(triplet => {
-      Iterator((triplet.dstId, Math.max(triplet.dstId, triplet.srcId)))
+    val initialComponentCalculation: VertexRDD[VertexId] = graph.aggregateMessages(triplet => {
+      triplet.sendToDst(Math.max(triplet.dstId, triplet.srcId))
     }, (vertexId1: VertexId, vertexId2: VertexId) => {
       Math.max(vertexId1, vertexId2)
     })

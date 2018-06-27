@@ -1,5 +1,6 @@
 description = 'dga-core'
 
+apply plugin: 'eclipse'
 
 dependencies {
 }

@@ -17,3 +17,5 @@ _site/
 .classpath
 .project
 main1.eml
+.settings
+.cache*

@@ -25,12 +25,13 @@ import com.twitter.chill.ObjectSerializer
 import org.apache.spark.broadcast._
 import org.apache.spark.graphx._
 import org.apache.spark.rdd.RDD
-import org.apache.spark.{Logging, SparkConf, SparkContext}
+import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.math.Ordering
 import scala.reflect.ClassTag
+import com.soteradefense.dga.graphx.utils.Logging
 
 /**
  * Core object for running High Betweenness Set Extraction.
@@ -354,7 +355,7 @@ class HighBetweennessCore(var hbseConf: HBSEConf, private var previousPivots: mu
   private def pingPredecessorsAndFindSuccessors(graph: Graph[HBSEData, Long], sc: SparkContext): Graph[HBSEData, Long] = {
     var hbseGraph = graph.cache()
     // Send a message to all of your predecessors that sent you shortest path messages.
-    val pingRDD = hbseGraph.mapReduceTriplets(sendPingMessage, merge[Long]).cache()
+    val pingRDD = hbseGraph.aggregateMessages[List[Long]](sendPingMessage, merge).cache()
 
     logInfo("Processing Nodes with No Successors")
     // Temp graph for processing ping messages
@@ -387,7 +388,7 @@ class HighBetweennessCore(var hbseConf: HBSEConf, private var previousPivots: mu
 
     logInfo("Sending Dependency Messages")
     // Send a message to your predecessor that n number of nodes are dependent on you.
-    val msgRDD = mergedGraph.mapReduceTriplets(sendDependencyMessage, merge[(Long, Double, Long)]).cache()
+    val msgRDD = mergedGraph.aggregateMessages[List[(Long, Double, Long)]](sendDependencyMessage, merge).cache()
 
     // Rebuild the hbseGraph with the updated state of the vertex values
     var runGraph = mergedGraph.outerJoinVertices(msgRDD)((vertexId, vertexData, msgs) => {
@@ -511,7 +512,8 @@ class HighBetweennessCore(var hbseConf: HBSEConf, private var previousPivots: mu
    *                type Long.
    * @return Tuple3 List Iterator sent to srcId.
    */
-  private def sendDependencyMessage(triplet: EdgeTriplet[(mutable.HashSet[Long], HBSEData), Long]) = {
+  private def sendDependencyMessage(triplet: EdgeContext[(mutable.HashSet[Long], HBSEData), Long, 
+      List[(Long,Double,Long)]]) = {
     var buffer = new ListBuffer[(Long, Double, Long)]
     val noSuccessorsList = triplet.dstAttr._1
     val vertexData = triplet.dstAttr._2
@@ -527,7 +529,7 @@ class HighBetweennessCore(var hbseConf: HBSEConf, private var previousPivots: mu
       buf
     }
     buffer = noSuccessorsList.foldLeft(buffer)(noSuccessorMessageAccumulation)
-    Iterator((triplet.srcId, buffer.toList))
+    triplet.sendToSrc(buffer.toList)
   }
 
   /**
@@ -537,7 +539,7 @@ class HighBetweennessCore(var hbseConf: HBSEConf, private var previousPivots: mu
    * @param triplet An edge triplet of type VertexData and Long.
    * @return Long List Iterator sent to the srcId.
    */
-  private def sendPingMessage(triplet: EdgeTriplet[HBSEData, Long]) = {
+  private def sendPingMessage(triplet: EdgeContext[HBSEData, Long, List[Long]]) = {
     var buffer = new ListBuffer[Long]
     logInfo(s"About to Ping ${triplet.srcId} Predecessors")
     /**
@@ -556,7 +558,7 @@ class HighBetweennessCore(var hbseConf: HBSEConf, private var previousPivots: mu
       buf
     }
     buffer = triplet.dstAttr.getPathDataMap.foldLeft(buffer)(buildPingMessages)
-    Iterator((triplet.srcId, buffer.toList))
+    triplet.sendToSrc(buffer.toList)
   }
 
   /**
